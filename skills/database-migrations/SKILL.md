@@ -129,7 +129,13 @@ END $$;
 ### Workflow
 
 ```bash
-# Create migration from schema changes
+# Verify schema and config before migrating
+npx prisma validate
+
+# Compare local migrations vs database (drift, pending, failed)
+npx prisma migrate status
+
+# Create migration from schema changes (review generated SQL before applying)
 npx prisma migrate dev --name add_user_avatar
 
 # Apply pending migrations in production
@@ -140,7 +146,12 @@ npx prisma migrate reset
 
 # Generate client after schema changes
 npx prisma generate
+
+# Diff schema vs database when investigating drift
+npx prisma migrate diff --from-migrations ./prisma/migrations --to-schema-datamodel ./prisma/schema.prisma
 ```
+
+**Agent tip:** In Cursor, the Prisma plugin MCP `migrate-status` tool runs `prisma migrate status` for the workspace and surfaces pending, missing, or failed migrations without guessing shell flags.
 
 ### Schema Example
 

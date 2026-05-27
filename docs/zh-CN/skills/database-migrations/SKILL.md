@@ -129,18 +129,29 @@ END $$;
 ### 工作流
 
 ```bash
-# Create migration from schema changes
+# 迁移前验证 schema 与配置
+npx prisma validate
+
+# 对比本地迁移与数据库（漂移、待应用、失败）
+npx prisma migrate status
+
+# 根据 schema 变更创建迁移（应用前请审查生成的 SQL）
 npx prisma migrate dev --name add_user_avatar
 
-# Apply pending migrations in production
+# 在生产环境应用待处理迁移
 npx prisma migrate deploy
 
-# Reset database (dev only)
+# 重置数据库（仅开发环境）
 npx prisma migrate reset
 
-# Generate client after schema changes
+# schema 变更后生成客户端
 npx prisma generate
+
+# 排查漂移时对比 schema 与数据库
+npx prisma migrate diff --from-migrations ./prisma/migrations --to-schema-datamodel ./prisma/schema.prisma
 ```
+
+**智能体提示：** 在 Cursor 中，Prisma 插件 MCP 的 `migrate-status` 工具会对工作区执行 `prisma migrate status`，并报告待应用、缺失或失败的迁移，无需猜测 shell 参数。
 
 ### 模式示例
 
