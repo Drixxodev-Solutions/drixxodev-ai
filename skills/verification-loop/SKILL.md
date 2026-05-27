@@ -124,3 +124,17 @@ Run: /verify
 
 This skill complements PostToolUse hooks but provides deeper verification.
 Hooks catch issues immediately; this skill provides comprehensive review.
+
+## Email report (Resend)
+
+After phases complete, email the report to yourself or a team inbox:
+
+```bash
+npm run verify:report -- --dry-run          # preview only
+RESEND_API_KEY=re_... \
+RESEND_FROM="ECC <reports@yourdomain.com>" \
+VERIFICATION_REPORT_TO=you@example.com \
+  npm run verify:report
+```
+
+Uses Resend idempotency keys (`verification-report/<commit>/<to>`) so retries do not duplicate mail.
