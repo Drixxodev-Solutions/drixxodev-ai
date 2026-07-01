@@ -4,14 +4,18 @@
  * Covers the ECC root resolution fallback chain:
  *   1. CLAUDE_PLUGIN_ROOT env var
  *   2. Standard install (~/.claude/)
- *   3. Plugin cache auto-detection
- *   4. Fallback to ~/.claude/
+ *   3. Exact legacy plugin roots under ~/.claude/plugins/
+ *   4. Plugin cache auto-detection
+ *   5. Fallback to ~/.claude/
  */
 
 const assert = require('assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const CURRENT_PACKAGE_VERSION = JSON.parse(
+  fs.readFileSync(path.join(__dirname, '..', '..', 'package.json'), 'utf8')
+).version;
 
 const { resolveEccRoot, INLINE_RESOLVE } = require('../../scripts/lib/resolve-ecc-root');
 
@@ -39,10 +43,17 @@ function setupStandardInstall(homeDir) {
   return claudeDir;
 }
 
-function setupPluginCache(homeDir, orgName, version) {
+function setupLegacyPluginInstall(homeDir, segments) {
+  const legacyDir = path.join(homeDir, '.claude', 'plugins', ...segments);
+  const scriptDir = path.join(legacyDir, 'scripts', 'lib');
+  fs.mkdirSync(scriptDir, { recursive: true });
+  fs.writeFileSync(path.join(scriptDir, 'utils.js'), '// stub');
+  return legacyDir;
+}
+function setupPluginCache(homeDir, pluginSlug, orgName, version) {
   const cacheDir = path.join(
     homeDir, '.claude', 'plugins', 'cache',
-    'everything-claude-code', orgName, version
+    pluginSlug, orgName, version
   );
   const scriptDir = path.join(cacheDir, 'scripts', 'lib');
   fs.mkdirSync(scriptDir, { recursive: true });
@@ -103,12 +114,89 @@ function runTests() {
     }
   })) passed++; else failed++;
 
+  if (test('finds current plugin install at ~/.claude/plugins/ecc', () => {
+    const homeDir = createTempDir();
+    try {
+      const expected = setupLegacyPluginInstall(homeDir, ['ecc']);
+      const result = resolveEccRoot({ envRoot: '', homeDir });
+      assert.strictEqual(result, expected);
+    } finally {
+      fs.rmSync(homeDir, { recursive: true, force: true });
+    }
+  })) passed++; else failed++;
+
+  if (test('finds current plugin install at ~/.claude/plugins/ecc@ecc', () => {
+    const homeDir = createTempDir();
+    try {
+      const expected = setupLegacyPluginInstall(homeDir, ['ecc@ecc']);
+      const result = resolveEccRoot({ envRoot: '', homeDir });
+      assert.strictEqual(result, expected);
+    } finally {
+      fs.rmSync(homeDir, { recursive: true, force: true });
+    }
+  })) passed++; else failed++;
+
+  if (test('finds exact legacy plugin install at ~/.claude/plugins/everything-claude-code', () => {
+    const homeDir = createTempDir();
+    try {
+      const expected = setupLegacyPluginInstall(homeDir, ['everything-claude-code']);
+      const result = resolveEccRoot({ envRoot: '', homeDir });
+      assert.strictEqual(result, expected);
+    } finally {
+      fs.rmSync(homeDir, { recursive: true, force: true });
+    }
+  })) passed++; else failed++;
+
+  if (test('finds exact legacy plugin install at ~/.claude/plugins/everything-claude-code@everything-claude-code', () => {
+    const homeDir = createTempDir();
+    try {
+      const expected = setupLegacyPluginInstall(homeDir, ['everything-claude-code@everything-claude-code']);
+      const result = resolveEccRoot({ envRoot: '', homeDir });
+      assert.strictEqual(result, expected);
+    } finally {
+      fs.rmSync(homeDir, { recursive: true, force: true });
+    }
+  })) passed++; else failed++;
+
+  if (test('finds marketplace current plugin install at ~/.claude/plugins/marketplaces/ecc', () => {
+    const homeDir = createTempDir();
+    try {
+      const expected = setupLegacyPluginInstall(homeDir, ['marketplaces', 'ecc']);
+      const result = resolveEccRoot({ envRoot: '', homeDir });
+      assert.strictEqual(result, expected);
+    } finally {
+      fs.rmSync(homeDir, { recursive: true, force: true });
+    }
+  })) passed++; else failed++;
+
+  if (test('finds marketplace legacy plugin install at ~/.claude/plugins/marketplaces/everything-claude-code', () => {
+    const homeDir = createTempDir();
+    try {
+      const expected = setupLegacyPluginInstall(homeDir, ['marketplaces', 'everything-claude-code']);
+      const result = resolveEccRoot({ envRoot: '', homeDir });
+      assert.strictEqual(result, expected);
+    } finally {
+      fs.rmSync(homeDir, { recursive: true, force: true });
+    }
+  })) passed++; else failed++;
+
+  if (test('prefers exact legacy plugin install over plugin cache', () => {
+    const homeDir = createTempDir();
+    try {
+      const expected = setupLegacyPluginInstall(homeDir, ['marketplaces', 'ecc']);
+      setupPluginCache(homeDir, 'ecc', 'affaan-m', CURRENT_PACKAGE_VERSION);
+      const result = resolveEccRoot({ envRoot: '', homeDir });
+      assert.strictEqual(result, expected);
+    } finally {
+      fs.rmSync(homeDir, { recursive: true, force: true });
+    }
+  })) passed++; else failed++;
   // ─── Plugin Cache Auto-Detection ───
 
   if (test('discovers plugin root from cache directory', () => {
     const homeDir = createTempDir();
     try {
-      const expected = setupPluginCache(homeDir, 'everything-claude-code', '1.8.0');
+      const expected = setupPluginCache(homeDir, 'ecc', 'affaan-m', CURRENT_PACKAGE_VERSION);
       const result = resolveEccRoot({ envRoot: '', homeDir });
       assert.strictEqual(result, expected);
     } finally {
@@ -120,7 +208,7 @@ function runTests() {
     const homeDir = createTempDir();
     try {
       const claudeDir = setupStandardInstall(homeDir);
-      setupPluginCache(homeDir, 'everything-claude-code', '1.8.0');
+      setupPluginCache(homeDir, 'ecc', 'affaan-m', CURRENT_PACKAGE_VERSION);
       const result = resolveEccRoot({ envRoot: '', homeDir });
       assert.strictEqual(result, claudeDir,
         'Standard install should take precedence over plugin cache');
@@ -132,13 +220,13 @@ function runTests() {
   if (test('handles multiple versions in plugin cache', () => {
     const homeDir = createTempDir();
     try {
-      setupPluginCache(homeDir, 'everything-claude-code', '1.7.0');
-      const expected = setupPluginCache(homeDir, 'everything-claude-code', '1.8.0');
+      setupPluginCache(homeDir, 'everything-claude-code', 'legacy-org', '1.7.0');
+      const expected = setupPluginCache(homeDir, 'ecc', 'affaan-m', CURRENT_PACKAGE_VERSION);
       const result = resolveEccRoot({ envRoot: '', homeDir });
       // Should find one of them (either is valid)
       assert.ok(
         result === expected ||
-        result === path.join(homeDir, '.claude', 'plugins', 'cache', 'everything-claude-code', 'everything-claude-code', '1.7.0'),
+        result === path.join(homeDir, '.claude', 'plugins', 'cache', 'everything-claude-code', 'legacy-org', '1.7.0'),
         'Should resolve to a valid plugin cache directory'
       );
     } finally {
@@ -207,10 +295,26 @@ function runTests() {
     assert.strictEqual(result, '/inline/test/root');
   })) passed++; else failed++;
 
+  if (test('INLINE_RESOLVE discovers exact legacy plugin root when env var is unset', () => {
+    const homeDir = createTempDir();
+    try {
+      const expected = setupLegacyPluginInstall(homeDir, ['marketplaces', 'ecc']);
+      const { execFileSync } = require('child_process');
+      const result = execFileSync('node', [
+        '-e', `console.log(${INLINE_RESOLVE})`,
+      ], {
+        env: { PATH: process.env.PATH, HOME: homeDir, USERPROFILE: homeDir },
+        encoding: 'utf8',
+      }).trim();
+      assert.strictEqual(result, expected);
+    } finally {
+      fs.rmSync(homeDir, { recursive: true, force: true });
+    }
+  })) passed++; else failed++;
   if (test('INLINE_RESOLVE discovers plugin cache when env var is unset', () => {
     const homeDir = createTempDir();
     try {
-      const expected = setupPluginCache(homeDir, 'everything-claude-code', '1.9.0');
+      const expected = setupPluginCache(homeDir, 'ecc', 'affaan-m', CURRENT_PACKAGE_VERSION);
       const { execFileSync } = require('child_process');
       const result = execFileSync('node', [
         '-e', `console.log(${INLINE_RESOLVE})`,

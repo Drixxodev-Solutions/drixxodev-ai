@@ -15,13 +15,25 @@ export const isLinux: boolean;
 /** Get the user's home directory (cross-platform) */
 export function getHomeDir(): string;
 
-/** Get the Claude config directory (~/.claude) */
+/**
+ * ECC agent data root for memory persistence and related state.
+ * Defaults to ~/.claude; override with ECC_AGENT_DATA_HOME (e.g. ~/.cursor/ecc).
+ */
+export function getAgentDataHome(): string;
+
+/** Get the agent data directory (alias of getAgentDataHome) */
 export function getClaudeDir(): string;
 
-/** Get the sessions directory (~/.claude/sessions) */
+/** Get the canonical ECC sessions directory ($ECC_AGENT_DATA_HOME/session-data) */
 export function getSessionsDir(): string;
 
-/** Get the learned skills directory (~/.claude/skills/learned) */
+/** Get the legacy sessions directory ($ECC_AGENT_DATA_HOME/sessions) */
+export function getLegacySessionsDir(): string;
+
+/** Get session directories to search, with canonical storage first and legacy fallback second */
+export function getSessionSearchDirs(): string[];
+
+/** Get the learned skills directory ($ECC_AGENT_DATA_HOME/skills/learned) */
 export function getLearnedSkillsDir(): string;
 
 /** Get the temp directory (cross-platform) */
@@ -48,8 +60,15 @@ export function getDateTimeString(): string;
 // --- Session/Project ---
 
 /**
+ * Sanitize a string for use as a session filename segment.
+ * Replaces invalid characters, strips leading dots, and returns null when
+ * nothing meaningful remains. Non-ASCII names are hashed for stability.
+ */
+export function sanitizeSessionId(raw: string | null | undefined): string | null;
+
+/**
  * Get short session ID from CLAUDE_SESSION_ID environment variable.
- * Returns last 8 characters, falls back to project name then the provided fallback.
+ * Returns last 8 characters, falls back to a sanitized project name then the provided fallback.
  */
 export function getSessionIdShort(fallback?: string): string;
 

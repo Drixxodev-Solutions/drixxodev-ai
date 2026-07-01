@@ -8,11 +8,12 @@ const { execFileSync } = require('child_process');
 
 const SCRIPT = path.join(__dirname, '..', '..', 'scripts', 'install-plan.js');
 
-function run(args = []) {
+function run(args = [], options = {}) {
   try {
     const stdout = execFileSync('node', [SCRIPT, ...args], {
       encoding: 'utf8',
       stdio: ['pipe', 'pipe', 'pipe'],
+      cwd: options.cwd,
       timeout: 10000,
     });
     return { code: 0, stdout, stderr: '' };
@@ -108,6 +109,20 @@ function runTests() {
     assert.ok(parsed.operations.length > 0);
   })) passed++; else failed++;
 
+  if (test('emits JSON for --skills without pulling parent module', () => {
+    const result = run([
+      '--skills', 'continuous-learning-v2',
+      '--target', 'claude',
+      '--json',
+    ]);
+    assert.strictEqual(result.code, 0);
+    const parsed = JSON.parse(result.stdout);
+    assert.deepStrictEqual(parsed.includedComponentIds, ['skill:continuous-learning-v2']);
+    assert.deepStrictEqual(parsed.selectedModuleIds, ['skill-continuous-learning-v2']);
+    assert.ok(parsed.operations.some(operation => operation.sourceRelativePath === 'skills/continuous-learning-v2'));
+    assert.ok(!parsed.operations.some(operation => operation.sourceRelativePath === 'skills/tdd-workflow'));
+  })) passed++; else failed++;
+
   if (test('loads planning intent from ecc-install.json', () => {
     const configDir = path.join(__dirname, '..', 'fixtures', 'tmp-install-plan-config');
     const configPath = path.join(configDir, 'ecc-install.json');
@@ -130,6 +145,31 @@ function runTests() {
       assert.deepStrictEqual(parsed.excludedComponentIds, ['capability:orchestration']);
       assert.ok(parsed.selectedModuleIds.includes('security'));
       assert.ok(!parsed.selectedModuleIds.includes('orchestration'));
+    } finally {
+      require('fs').rmSync(configDir, { recursive: true, force: true });
+    }
+  })) passed++; else failed++;
+
+  if (test('auto-detects planning intent from project ecc-install.json', () => {
+    const configDir = path.join(__dirname, '..', 'fixtures', 'tmp-install-plan-autodetect');
+    const configPath = path.join(configDir, 'ecc-install.json');
+
+    try {
+      require('fs').mkdirSync(configDir, { recursive: true });
+      require('fs').writeFileSync(configPath, JSON.stringify({
+        version: 1,
+        target: 'cursor',
+        profile: 'core',
+        include: ['capability:security'],
+      }, null, 2));
+
+      const result = run(['--json'], { cwd: configDir });
+      assert.strictEqual(result.code, 0, result.stderr);
+      const parsed = JSON.parse(result.stdout);
+      assert.strictEqual(parsed.target, 'cursor');
+      assert.strictEqual(parsed.profileId, 'core');
+      assert.deepStrictEqual(parsed.includedComponentIds, ['capability:security']);
+      assert.ok(parsed.selectedModuleIds.includes('security'));
     } finally {
       require('fs').rmSync(configDir, { recursive: true, force: true });
     }

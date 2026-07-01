@@ -9,7 +9,10 @@ const {
   listInstallProfiles,
   resolveInstallPlan,
 } = require('./lib/install-manifests');
-const { loadInstallConfig } = require('./lib/install/config');
+const {
+  findDefaultInstallConfigPath,
+  loadInstallConfig,
+} = require('./lib/install/config');
 const { normalizeInstallRequest } = require('./lib/install/request');
 
 function showHelp() {
@@ -22,6 +25,7 @@ Usage:
   node scripts/install-plan.js --list-components [--family <family>] [--target <target>] [--json]
   node scripts/install-plan.js --profile <name> [--with <component>]... [--without <component>]... [--target <target>] [--json]
   node scripts/install-plan.js --modules <id,id,...> [--with <component>]... [--without <component>]... [--target <target>] [--json]
+  node scripts/install-plan.js --skills <skill-id[,skill-id...]> [--target <target>] [--json]
   node scripts/install-plan.js --config <path> [--json]
 
 Options:
@@ -32,6 +36,7 @@ Options:
   --profile <name>    Resolve an install profile
   --modules <ids>     Resolve explicit module IDs (comma-separated)
   --with <component>  Include a user-facing install component
+  --skills <ids>      Include one or more skill components by directory ID
   --without <component>
                       Exclude a user-facing install component
   --config <path>     Load install intent from ecc-install.json
@@ -57,6 +62,11 @@ function parseArgs(argv) {
     listModules: false,
     listComponents: false,
   };
+
+  function normalizeSkillComponentIds(rawValue) {
+    return [...new Set(String(rawValue || '').split(',').map(value => value.trim()).filter(Boolean))]
+      .map(value => (value.startsWith('skill:') ? value : `skill:${value}`));
+  }
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
@@ -85,6 +95,9 @@ function parseArgs(argv) {
       if (componentId.trim()) {
         parsed.includeComponentIds.push(componentId.trim());
       }
+      index += 1;
+    } else if (arg === '--skill' || arg === '--skills') {
+      parsed.includeComponentIds.push(...normalizeSkillComponentIds(args[index + 1] || ''));
       index += 1;
     } else if (arg === '--without') {
       const componentId = args[index + 1] || '';
@@ -186,7 +199,7 @@ function main() {
   try {
     const options = parseArgs(process.argv);
 
-    if (options.help || process.argv.length <= 2) {
+    if (options.help) {
       showHelp();
       process.exit(0);
     }
@@ -224,9 +237,18 @@ function main() {
       return;
     }
 
+    const defaultConfigPath = options.configPath
+      ? null
+      : findDefaultInstallConfigPath({ cwd: process.cwd() });
     const config = options.configPath
       ? loadInstallConfig(options.configPath, { cwd: process.cwd() })
-      : null;
+      : (defaultConfigPath ? loadInstallConfig(defaultConfigPath, { cwd: process.cwd() }) : null);
+
+    if (process.argv.length <= 2 && !config) {
+      showHelp();
+      process.exit(0);
+    }
+
     const request = normalizeInstallRequest({
       ...options,
       languages: [],

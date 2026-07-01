@@ -13,6 +13,18 @@ const COMMANDS = {
     script: 'install-plan.js',
     description: 'Inspect selective-install manifests and resolved plans',
   },
+  catalog: {
+    script: 'catalog.js',
+    description: 'Discover install profiles and component IDs',
+  },
+  consult: {
+    script: 'consult.js',
+    description: 'Recommend ECC components and profiles from a natural language query',
+  },
+  'control-pane': {
+    script: 'control-pane.js',
+    description: 'Run the local ECC2 operator control pane',
+  },
   'install-plan': {
     script: 'install-plan.js',
     description: 'Alias for plan',
@@ -29,17 +41,37 @@ const COMMANDS = {
     script: 'repair.js',
     description: 'Restore drifted or missing ECC-managed files',
   },
+  'auto-update': {
+    script: 'auto-update.js',
+    description: 'Pull latest ECC changes and reinstall the current managed targets',
+  },
   status: {
     script: 'status.js',
     description: 'Query the ECC SQLite state store status summary',
+  },
+  'platform-audit': {
+    script: 'platform-audit.js',
+    description: 'Audit GitHub queues, discussions, roadmap, release, and security evidence',
+  },
+  'security-ioc-scan': {
+    script: 'ci/scan-supply-chain-iocs.js',
+    description: 'Scan dependency and AI-tool persistence surfaces for active supply-chain IOCs',
   },
   sessions: {
     script: 'sessions-cli.js',
     description: 'List or inspect ECC sessions from the SQLite state store',
   },
+  'work-items': {
+    script: 'work-items.js',
+    description: 'Track linked Linear, GitHub, handoff, and manual work items',
+  },
   'session-inspect': {
     script: 'session-inspect.js',
     description: 'Emit canonical ECC session snapshots from dmux or Claude history targets',
+  },
+  'loop-status': {
+    script: 'loop-status.js',
+    description: 'Inspect Claude transcripts for stale loop wakeups and pending tool results',
   },
   uninstall: {
     script: 'uninstall.js',
@@ -50,12 +82,20 @@ const COMMANDS = {
 const PRIMARY_COMMANDS = [
   'install',
   'plan',
+  'catalog',
+  'consult',
+  'control-pane',
   'list-installed',
   'doctor',
   'repair',
+  'auto-update',
   'status',
+  'platform-audit',
+  'security-ioc-scan',
   'sessions',
+  'work-items',
   'session-inspect',
+  'loop-status',
   'uninstall',
 ];
 
@@ -66,6 +106,7 @@ ECC selective-install CLI
 Usage:
   ecc <command> [args...]
   ecc [install args...]
+  ecc --dry-run <command> [args...]
 
 Commands:
 ${PRIMARY_COMMANDS.map(command => `  ${command.padEnd(15)} ${COMMANDS[command].description}`).join('\n')}
@@ -75,17 +116,33 @@ Compatibility:
   ecc [args...]      Without a command, args are routed to "install"
   ecc help <command> Show help for a specific command
 
+Global Flags:
+  --dry-run          Preview actions without executing (sets ECC_DRY_RUN=1)
+
 Examples:
   ecc typescript
   ecc install --profile developer --target claude
   ecc plan --profile core --target cursor
+  ecc catalog profiles
+  ecc catalog components --family language
+  ecc catalog show framework:nextjs
+  ecc consult "security reviews"
+  ecc control-pane --port 8765
   ecc list-installed --json
   ecc doctor --target cursor
   ecc repair --dry-run
+  ecc auto-update --dry-run
   ecc status --json
+  ecc status --exit-code
+  ecc status --markdown --write status.md
+  ecc platform-audit --json --allow-untracked docs/drafts/
+  ecc security-ioc-scan --home
   ecc sessions
   ecc sessions session-active --json
+  ecc work-items upsert linear-ecc-20 --source linear --source-id ECC-20 --title "Review control-plane contract" --status blocked
+  ecc work-items sync-github --repo affaan-m/ECC
   ecc session-inspect claude:latest
+  ecc loop-status --json
   ecc uninstall --target antigravity --dry-run
 `);
 
@@ -99,7 +156,21 @@ function resolveCommand(argv) {
     return { mode: 'help' };
   }
 
-  const [firstArg, ...restArgs] = args;
+  if (args.includes('--dry-run')) {
+    process.env.ECC_DRY_RUN = '1';
+  }
+
+  let cmdStart = 0;
+  while (cmdStart < args.length && args[cmdStart] === '--dry-run') {
+    cmdStart++;
+  }
+
+  if (cmdStart >= args.length) {
+    return { mode: 'help' };
+  }
+
+  const firstArg = args[cmdStart];
+  const restArgs = args.slice(cmdStart + 1);
 
   if (firstArg === '--help' || firstArg === '-h') {
     return { mode: 'help' };

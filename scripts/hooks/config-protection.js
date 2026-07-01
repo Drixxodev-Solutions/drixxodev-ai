@@ -7,12 +7,13 @@
  * the actual code. This hook steers the agent back to fixing the source.
  *
  * Exit codes:
- *   0 = allow (not a config file)
- *   2 = block (config file modification attempted)
+ *   0 = allow (not a config file, or first-time creation of one)
+ *   2 = block (existing config file modification attempted)
  */
 
 'use strict';
 
+const fs = require('fs');
 const path = require('path');
 
 const MAX_STDIN = 1024 * 1024;
@@ -58,26 +59,77 @@ const PROTECTED_FILES = new Set([
   '.stylelintrc.yml',
   '.markdownlint.json',
   '.markdownlint.yaml',
-  '.markdownlintrc',
+  '.markdownlintrc'
 ]);
+
+function parseInput(inputOrRaw) {
+  if (typeof inputOrRaw === 'string') {
+    try {
+      return inputOrRaw.trim() ? JSON.parse(inputOrRaw) : {};
+    } catch {
+      return {};
+    }
+  }
+
+  return inputOrRaw && typeof inputOrRaw === 'object' ? inputOrRaw : {};
+}
 
 /**
  * Exportable run() for in-process execution via run-with-flags.js.
  * Avoids the ~50-100ms spawnSync overhead when available.
  */
-function run(input) {
+function run(inputOrRaw, options = {}) {
+  if (options.truncated) {
+    return {
+      exitCode: 2,
+      stderr:
+        `BLOCKED: Hook input exceeded ${options.maxStdin || MAX_STDIN} bytes. ` +
+        'Refusing to bypass config-protection on a truncated payload. ' +
+        'Retry with a smaller edit or disable the config-protection hook temporarily.'
+    };
+  }
+
+  const input = parseInput(inputOrRaw);
   const filePath = input?.tool_input?.file_path || input?.tool_input?.file || '';
   if (!filePath) return { exitCode: 0 };
 
   const basename = path.basename(filePath);
   if (PROTECTED_FILES.has(basename)) {
+    // Allow first-time creation — there's no existing config to weaken.
+    // The hook's purpose is blocking modifications; writing a brand-new
+    // config file in a project that has none is a legitimate bootstrap
+    // path (e.g. scaffolding ESLint into a fresh repo).
+    //
+    // Fail closed on any stat error other than ENOENT. Use lstatSync so a
+    // symlink at the protected path is treated as present even if its target
+    // is missing — a dangling symlink at e.g. .eslintrc.js still represents
+    // an existing config entry that an agent should not silently replace.
+    // fs.existsSync would swallow EACCES/EPERM as false; lstatSync exposes
+    // the error code so we can treat only genuine "path not found" (ENOENT)
+    // as absent.
+    let exists = true;
+    try {
+      fs.lstatSync(filePath);
+      // lstat succeeded — something (file, dir, or symlink) exists here.
+    } catch (err) {
+      if (err && err.code === 'ENOENT') {
+        exists = false;
+      }
+      // Any other error (EACCES, EPERM, ELOOP, etc.) leaves exists=true
+      // so the guard is never silently weakened.
+    }
+
+    if (!exists) {
+      return { exitCode: 0 };
+    }
+
     return {
       exitCode: 2,
       stderr:
         `BLOCKED: Modifying ${basename} is not allowed. ` +
-        `Fix the source code to satisfy linter/formatter rules instead of ` +
-        `weakening the config. If this is a legitimate config change, ` +
-        `disable the config-protection hook temporarily.`,
+        'Fix the source code to satisfy linter/formatter rules instead of ' +
+        'weakening the config. If this is a legitimate config change, ' +
+        'disable the config-protection hook temporarily.'
     };
   }
 
@@ -87,7 +139,7 @@ function run(input) {
 module.exports = { run };
 
 // Stdin fallback for spawnSync execution
-let truncated = false;
+let truncated = /^(1|true|yes)$/i.test(String(process.env.ECC_HOOK_INPUT_TRUNCATED || ''));
 process.stdin.setEncoding('utf8');
 process.stdin.on('data', chunk => {
   if (raw.length < MAX_STDIN) {
@@ -100,25 +152,17 @@ process.stdin.on('data', chunk => {
 });
 
 process.stdin.on('end', () => {
-  // If stdin was truncated, the JSON is likely malformed. Fail open but
-  // log a warning so the issue is visible. The run() path (used by
-  // run-with-flags.js in-process) is not affected by this.
-  if (truncated) {
-    process.stderr.write('[config-protection] Warning: stdin exceeded 1MB, skipping check\n');
-    process.stdout.write(raw);
-    return;
+  const result = run(raw, {
+    truncated,
+    maxStdin: Number(process.env.ECC_HOOK_INPUT_MAX_BYTES) || MAX_STDIN
+  });
+
+  if (result.stderr) {
+    process.stderr.write(result.stderr + '\n');
   }
 
-  try {
-    const input = raw.trim() ? JSON.parse(raw) : {};
-    const result = run(input);
-
-    if (result.exitCode === 2) {
-      process.stderr.write(result.stderr + '\n');
-      process.exit(2);
-    }
-  } catch {
-    // Keep hook non-blocking on parse errors.
+  if (result.exitCode === 2) {
+    process.exit(2);
   }
 
   process.stdout.write(raw);

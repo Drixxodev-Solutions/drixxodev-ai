@@ -1,3 +1,7 @@
+---
+description: Safely identify and remove dead code with verification after each change.
+---
+
 # Refactor Clean
 
 Safely identify and remove dead code with test verification at every step.
@@ -69,7 +73,7 @@ Deleted:   12 unused functions
 Skipped:   2 items (tests failed)
 Saved:     ~450 lines removed
 ──────────────────────────────
-All tests passing ✅
+All tests passing PASS:
 ```
 
 ## Rules

@@ -1,7 +1,8 @@
 ---
 name: iterative-retrieval
 description: Pattern for progressively refining context retrieval to solve the subagent context problem
-origin: ECC
+metadata:
+  origin: ECC
 ---
 
 # Iterative Retrieval Pattern
@@ -36,12 +37,12 @@ A 4-phase loop that progressively refines context:
 ┌─────────────────────────────────────────────┐
 │                                             │
 │   ┌──────────┐      ┌──────────┐            │
-│   │ DISPATCH │─────▶│ EVALUATE │            │
+│   │ DISPATCH │─────│ EVALUATE │            │
 │   └──────────┘      └──────────┘            │
 │        ▲                  │                 │
 │        │                  ▼                 │
 │   ┌──────────┐      ┌──────────┐            │
-│   │   LOOP   │◀─────│  REFINE  │            │
+│   │   LOOP   │─────│  REFINE  │            │
 │   └──────────┘      └──────────┘            │
 │                                             │
 │        Max 3 cycles, then proceed           │

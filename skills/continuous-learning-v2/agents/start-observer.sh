@@ -35,8 +35,16 @@ PYTHON_CMD="${CLV2_PYTHON_CMD:-}"
 # Configuration
 # ─────────────────────────────────────────────
 
-CONFIG_DIR="${HOME}/.claude/homunculus"
-CONFIG_FILE="${SKILL_ROOT}/config.json"
+# shellcheck disable=SC1091
+. "${SKILL_ROOT}/scripts/lib/homunculus-dir.sh"
+CONFIG_DIR="$(_ecc_resolve_homunculus_dir)"
+if [ -n "${CLV2_CONFIG:-}" ]; then
+  CONFIG_FILE="$CLV2_CONFIG"
+elif [ -f "${CONFIG_DIR}/config.json" ]; then
+  CONFIG_FILE="${CONFIG_DIR}/config.json"
+else
+  CONFIG_FILE="${SKILL_ROOT}/config.json"
+fi
 # PID file is project-scoped so each project can have its own observer
 PID_FILE="${PROJECT_DIR}/.observer.pid"
 LOG_FILE="${PROJECT_DIR}/observer.log"

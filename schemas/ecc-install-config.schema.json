@@ -19,10 +19,16 @@
       "type": "string",
       "enum": [
         "claude",
+        "claude-project",
         "cursor",
         "antigravity",
         "codex",
-        "opencode"
+        "gemini",
+        "opencode",
+        "codebuddy",
+        "joycode",
+        "qwen",
+        "zed"
       ]
     },
     "profile": {
