@@ -42,20 +42,26 @@ jobs:
         env:
           NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Untrusted inputs are read as shell variables, never expanded into the script text
+          PAGE_ID: ${{ github.event.client_payload.page_id || inputs.page_id }}
+          DRY_RUN: ${{ github.event.client_payload.dry_run || inputs.dry_run }}
         run: |
-          ARGS="--verbose"
+          ARGS=(--verbose)
 
           # Handle page_id from repository_dispatch (Zapier) or workflow_dispatch (manual)
-          PAGE_ID="${{ github.event.client_payload.page_id || inputs.page_id }}"
           if [ -n "$PAGE_ID" ]; then
-            ARGS="$ARGS --page-id $PAGE_ID --force"
+            # Notion IDs are 32 hex chars, optionally hyphenated (UUID form)
+            if ! printf '%s' "$PAGE_ID" | grep -Eq '^[0-9a-fA-F-]{32,36}$'; then
+              echo "Invalid page_id format" >&2
+              exit 1
+            fi
+            ARGS+=(--page-id "$PAGE_ID" --force)
           fi
 
           # Handle dry_run
-          DRY_RUN="${{ github.event.client_payload.dry_run || inputs.dry_run }}"
           if [ "$DRY_RUN" = "true" ]; then
-            ARGS="$ARGS --dry-run"
+            ARGS+=(--dry-run)
           fi
 
-          echo "Running: node scripts/notion-triage.js $ARGS"
-          node scripts/notion-triage.js $ARGS
+          echo "Running: node scripts/notion-triage.js ${ARGS[*]}"
+          node scripts/notion-triage.js "${ARGS[@]}"
