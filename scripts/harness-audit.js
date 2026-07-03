@@ -916,7 +916,7 @@ function getConsumerChecks(rootDir) {
       scopes: ['repo'],
       path: 'SECURITY.md',
       description: 'The project exposes a security policy or automated dependency scanning',
-      pass: fileExists(rootDir, 'SECURITY.md') || fileExists(rootDir, '.github/dependabot.yml') || fileExists(rootDir, '.github/codeql.yml'),
+      pass: fileExists(rootDir, 'SECURITY.md') || fileExists(rootDir, 'docs/community/SECURITY.md') || fileExists(rootDir, '.github/dependabot.yml') || fileExists(rootDir, '.github/codeql.yml'),
       fix: 'Add SECURITY.md or dependency/code scanning configuration to document the project security posture.',
     },
     {

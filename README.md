@@ -111,7 +111,7 @@ ECC v2.0.0 adds the public Hermes operator story on top of that reusable layer: 
 
 <sub><strong>Community sponsors:</strong> <a href="https://github.com/mikejmorgan-ai">Mike Morgan</a> · <a href="https://github.com/jasonwu513">@jasonwu513</a> · <a href="https://github.com/1anter">@1anter</a> · <a href="https://github.com/massimotodaro">@massimotodaro</a> · <a href="https://github.com/meadmccabe">@meadmccabe</a></sub>
 
-<sub><a href="https://github.com/sponsors/affaan-m"><strong>Become a Sponsor</strong></a> · <a href="SPONSORS.md">Sponsor Tiers</a> · <a href="SPONSORING.md">Sponsorship Program</a></sub>
+<sub><a href="https://github.com/sponsors/affaan-m"><strong>Become a Sponsor</strong></a> · <a href="docs/community/SPONSORS.md">Sponsor Tiers</a> · <a href="docs/community/SPONSORING.md">Sponsorship Program</a></sub>
 
 </div>
 
@@ -124,14 +124,14 @@ This repo is the raw code only. The guides explain everything.
 <table>
 <tr>
 <td width="50%" align="center">
-<a href="./the-shortform-guide.md">
+<a href="./docs/guides/the-shortform-guide.md">
 <img src="./assets/images/shortform/00-header.png" width="420" alt="The Shorthand Guide to ECC" /><br />
 <b>The Shorthand Guide</b>
 </a>
 <br /><sub>Setup, foundations, philosophy. <b>Read this first.</b> (<a href="https://x.com/affaan/status/2012378465664745795">thread</a>)</sub>
 </td>
 <td width="50%" align="center">
-<a href="./the-longform-guide.md">
+<a href="./docs/guides/the-longform-guide.md">
 <img src="./assets/images/longform/01-header.png" width="420" alt="The Longform Guide to ECC" /><br />
 <b>The Longform Guide</b>
 </a>
@@ -141,7 +141,7 @@ This repo is the raw code only. The guides explain everything.
 </table>
 
 <div align="center">
-<a href="./the-security-guide.md">
+<a href="./docs/guides/the-security-guide.md">
 <img src="./assets/images/security/security-guide-header.png" width="420" alt="The Shorthand Guide to Everything Agentic Security" /><br />
 <b>The Security Guide</b>
 </a>
@@ -439,7 +439,7 @@ If you stacked methods, clean up in this order:
 /plugin list ecc@ecc
 ```
 
-**That's it!** You now have access to 67 agents, 277 skills, and 92 legacy command shims.
+**That's it!** You now have access to 72 agents, 278 skills, and 94 legacy command shims.
 
 ### Dashboard GUI
 
@@ -569,7 +569,7 @@ ECC/
 |   |-- plugin.json         # Plugin metadata and component paths
 |   |-- marketplace.json    # Marketplace catalog for /plugin marketplace add
 |
-|-- agents/           # 67 specialized subagents for delegation
+|-- agents/           # 72 specialized subagents for delegation
 |   |-- planner.md           # Feature implementation planning
 |   |-- architect.md         # System design decisions
 |   |-- tdd-guide.md         # Test-driven development
@@ -1235,7 +1235,7 @@ Yes. ECC is cross-platform:
 <details>
 <summary><b>How do I contribute a new skill or agent?</b></summary>
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). The short version:
+See [CONTRIBUTING.md](docs/community/CONTRIBUTING.md). The short version:
 1. Fork the repo
 2. Create your skill in `skills/your-skill-name/SKILL.md` (with YAML frontmatter)
 3. Or create an agent in `agents/your-agent.md`
@@ -1270,7 +1270,7 @@ This repo is meant to be a community resource. If you have:
 - Better MCP configurations
 - Improved rules
 
-Please contribute! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+Please contribute! See [CONTRIBUTING.md](docs/community/CONTRIBUTING.md) for guidelines.
 
 ### Ideas for Contributions
 
@@ -1526,9 +1526,9 @@ The configuration is automatically detected from `.opencode/opencode.json`.
 
 | Feature | Claude Code         | OpenCode | Status |
 |---------|---------------------|----------|--------|
-| Agents | PASS: 67 agents     | PASS: 12 agents | **Claude Code leads** |
-| Commands | PASS: 92 commands   | PASS: 35 commands | **Claude Code leads** |
-| Skills | PASS: 277 skills    | PASS: 37 skills | **Claude Code leads** |
+| Agents | PASS: 72 agents     | PASS: 12 agents | **Claude Code leads** |
+| Commands | PASS: 94 commands   | PASS: 35 commands | **Claude Code leads** |
+| Skills | PASS: 278 skills    | PASS: 37 skills | **Claude Code leads** |
 | Hooks | PASS: 8 event types | PASS: 11 events | **OpenCode has more!** |
 | Rules | PASS: 29 rules      | PASS: 13 instructions | **Claude Code leads** |
 | MCP Servers | PASS: 14 servers    | PASS: Full | **Full parity** |
@@ -1687,9 +1687,9 @@ ECC is the **first plugin to maximize every major AI coding tool**. Here's how e
 
 | Feature | Claude Code           | Cursor IDE | Codex CLI | OpenCode | GitHub Copilot |
 |---------|-----------------------|------------|-----------|----------|----------------|
-| **Agents** | 67                    | Shared (AGENTS.md) | Shared (AGENTS.md) | 12 | N/A |
-| **Commands** | 92                    | Shared | Instruction-based | 35 | 5 prompts |
-| **Skills** | 277                   | Shared | 10 (native format) | 37 | Via instructions |
+| **Agents** | 72                    | Shared (AGENTS.md) | Shared (AGENTS.md) | 12 | N/A |
+| **Commands** | 94                    | Shared | Instruction-based | 35 | 5 prompts |
+| **Skills** | 278                   | Shared | 10 (native format) | 37 | Via instructions |
 | **Hook Events** | 8 types               | 15 types | None yet | 11 types | None |
 | **Hook Scripts** | 20+ scripts           | 16 scripts (DRY adapter) | N/A | Plugin hooks | N/A |
 | **Rules** | 34 (common + lang)    | 34 (YAML frontmatter) | Instruction-based | 13 instructions | 1 always-on file |
@@ -1824,15 +1824,15 @@ These configs work for my workflow. You should:
 ECC takes supply-chain and agent safety seriously.
 
 - **Official sources only.** Install ECC only from the verified channels listed in the banner at the top of this README — the [GitHub repo](https://github.com/affaan-m/ECC), the `ecc-universal` / `ecc-agentshield` npm packages, the [GitHub App](https://github.com/apps/ecc-tools), the plugin slug `ecc@ecc`, and [ecc.tools](https://ecc.tools). Third-party re-uploads and mirrors are unreviewed and may ship malware.
-- **Report a vulnerability.** Use the private process in [SECURITY.md](SECURITY.md) (GitHub private vulnerability reporting). Please do not open public issues for security reports.
+- **Report a vulnerability.** Use the private process in [SECURITY.md](docs/community/SECURITY.md) (GitHub private vulnerability reporting). Please do not open public issues for security reports.
 - **Built-in guardrails.** GateGuard gates destructive shell commands (including `rm`, force/path `git checkout`, and destructive `find -exec`) before they run; the supply-chain IOC scanner runs in CI; and [AgentShield](#agentshield--security-auditor) audits your own agent, hook, MCP, permission, and secret surfaces (`/security-scan`).
-- **Deep dive.** See the [Security Guide](./the-security-guide.md).
+- **Deep dive.** See the [Security Guide](./docs/guides/the-security-guide.md).
 
 ---
 
 ## Sponsors
 
-Featured sponsors are at the top of this README — full list and tiers in [SPONSORS.md](SPONSORS.md). [Become a sponsor](https://github.com/sponsors/affaan-m).
+Featured sponsors are at the top of this README — full list and tiers in [SPONSORS.md](docs/community/SPONSORS.md). [Become a sponsor](https://github.com/sponsors/affaan-m).
 
 ---
 
@@ -1840,7 +1840,7 @@ Featured sponsors are at the top of this README — full list and tiers in [SPON
 
 - **Shorthand Guide (Start Here):** [The Shorthand Guide to ECC](https://x.com/affaan/status/2012378465664745795)
 - **Longform Guide (Advanced):** [The Longform Guide to ECC](https://x.com/affaan/status/2014040193557471352)
-- **Security Guide:** [Security Guide](./the-security-guide.md) | [Thread](https://x.com/affaan/status/2033263813387223421)
+- **Security Guide:** [Security Guide](./docs/guides/the-security-guide.md) | [Thread](https://x.com/affaan/status/2033263813387223421)
 - **Follow:** [@affaan](https://x.com/affaan)
 
 ---

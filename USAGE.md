@@ -67,7 +67,7 @@ Then start a new Claude Code session to pick up the changes.
 - **Hooks**: JSON with `matcher` and `hooks` array
 - **Rules**: Plain Markdown
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed format guides.
+See [CONTRIBUTING.md](docs/community/CONTRIBUTING.md) for detailed format guides.
 
 ## Running Tests
 

@@ -164,7 +164,7 @@ Copy-Item -Recurse rules/typescript "$HOME/.claude/rules/"
 /plugin list ecc@ecc
 ```
 
-**完成！** 你现在可以使用 67 个代理、277 个技能和 92 个命令。
+**完成！** 你现在可以使用 72 个代理、278 个技能和 94 个命令。
 
 ### multi-* 命令需要额外配置
 
@@ -741,7 +741,7 @@ node tests/hooks/hooks.test.js
 - 更好的 MCP 配置
 - 改进的规则
 
-请贡献！请参阅 [CONTRIBUTING.md](CONTRIBUTING.md) 了解指南。
+请贡献！请参阅 [CONTRIBUTING.md](docs/community/CONTRIBUTING.md) 了解指南。
 
 ### 贡献想法
 
@@ -800,7 +800,7 @@ node tests/hooks/hooks.test.js
 
 本项目免费开源。赞助支持项目持续维护与功能迭代。
 
-[成为赞助者](https://github.com/sponsors/affaan-m) | [赞助档位](SPONSORS.md) | [赞助计划](SPONSORING.md)
+[成为赞助者](https://github.com/sponsors/affaan-m) | [赞助档位](docs/community/SPONSORS.md) | [赞助计划](docs/community/SPONSORING.md)
 
 ---
 
@@ -814,7 +814,7 @@ node tests/hooks/hooks.test.js
 
 - **快速上手指南（入门首选）：** [Everything Claude Code 简明指南](https://x.com/affaanmustafa/status/2012378465664745795)
 - **长文指南（高阶进阶）：** [Everything Claude Code 完整版深度指南](https://x.com/affaanmustafa/status/2014040193557471352)
-- **安全指南：** [安全指南](./the-security-guide.md) | [推文详解](https://x.com/affaanmustafa/status/2033263813387223421)
+- **安全指南：** [安全指南](./docs/guides/the-security-guide.md) | [推文详解](https://x.com/affaanmustafa/status/2033263813387223421)
 - **关注作者：** [@affaanmustafa](https://x.com/affaanmustafa)
 
 ---
