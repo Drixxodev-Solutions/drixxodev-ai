@@ -9,6 +9,8 @@ const { buildControlPaneAction } = require('./actions');
 const { buildControlPaneSnapshot, resolveControlPaneConfig } = require('./state');
 const { renderControlPaneHtml } = require('./ui');
 const { renderProximityVizHtml } = require('./proximity-viz');
+const { renderControlPlaneViewHtml } = require('./control-plane-view-ui');
+const { createControlPlaneViewSource } = require('./control-plane-view');
 const { claimWorkItem, moveWorkItem } = require('./work-item-mutations');
 
 // Run a single write against the local work-item store, then close it. Kept
@@ -24,42 +26,14 @@ async function withStateStore(stateDbPath, fn) {
   }
 }
 
-const LOOPBACK_HOSTNAMES = new Set(['127.0.0.1', 'localhost', '[::1]', '::1']);
-
-// Extract the hostname portion of an HTTP Host header value, stripping any
-// port. Returns null when the header is missing or malformed. Used to gate
-// requests against a local-only allowlist so DNS-rebinding cannot pivot a
-// browser tab into the loopback control-pane API.
-function parseHostHeader(value) {
-  if (!value || typeof value !== 'string') return null;
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-  const match = trimmed.match(/^(\[[^\]]+\]|[^:]+)(?::\d+)?$/);
-  if (!match) return null;
-  return match[1].toLowerCase();
-}
-
-function buildAllowedHostnames(configuredHost) {
-  const set = new Set(LOOPBACK_HOSTNAMES);
-  if (configuredHost) set.add(String(configuredHost).toLowerCase());
-  return set;
-}
-
-function isAllowedHostHeader(hostHeader, allowedHostnames) {
-  const hostname = parseHostHeader(hostHeader);
-  if (!hostname) return false;
-  return allowedHostnames.has(hostname);
-}
-
-function isAllowedOrigin(originHeader, allowedHostnames) {
-  if (!originHeader || typeof originHeader !== 'string') return true;
-  try {
-    const url = new URL(originHeader);
-    return allowedHostnames.has(url.hostname.toLowerCase());
-  } catch {
-    return false;
-  }
-}
+// Host/Origin gating lives in scripts/lib/loopback-guard.js so every ECC
+// loopback server shares one hardened implementation; re-exported below to
+// keep this module's public API stable.
+const {
+  buildAllowedHostnames,
+  isAllowedHostHeader,
+  isAllowedOrigin
+} = require('../loopback-guard');
 
 function usage() {
   return [
@@ -213,6 +187,24 @@ function createControlPaneServer(options = {}) {
   const baseQuery = options.query || '';
   const allowedHostnames = buildAllowedHostnames(host);
 
+  // Live control-plane view: sessions + proximity scan + coordination
+  // inventory, joined as tasks/lanes/events with a 2D projection. The view
+  // source owns the rolling projection window so z-scores span ticks.
+  const viewSource = createControlPlaneViewSource({
+    projection: options.projection || {},
+    viewOptions: options.viewOptions || {},
+    buildSnapshot: () =>
+      buildControlPaneSnapshot({
+        repoRoot,
+        dbPath: resolvedConfig.dbPath,
+        stateDbPath: resolvedConfig.stateDbPath,
+        config: resolvedConfig,
+        allowActions,
+        includeProximity: true,
+        proximityOptions: options.proximityOptions
+      })
+  });
+
   const server = http.createServer(async (req, res) => {
     try {
       if (!isAllowedHostHeader(req.headers.host, allowedHostnames)) {
@@ -282,6 +274,29 @@ function createControlPaneServer(options = {}) {
           includeProximity: true
         });
         sendJson(res, 200, snapshot.proximity || { enabled: true, advisories: [], positions: [], links: [], counts: {} });
+        return;
+      }
+
+      // Control-plane live view: 2D projection + advisory events + inventory.
+      if (req.method === 'GET' && requestUrl.pathname === '/control-plane') {
+        sendText(res, 200, renderControlPlaneViewHtml(), 'text/html; charset=utf-8');
+        return;
+      }
+
+      if (req.method === 'GET' && requestUrl.pathname === '/api/control-plane') {
+        sendJson(res, 200, await viewSource.build());
+        return;
+      }
+
+      if (req.method === 'GET' && requestUrl.pathname === '/api/control-plane/events') {
+        const view = await viewSource.build();
+        sendJson(res, 200, {
+          schemaVersion: view.schemaVersion,
+          generatedAt: view.generatedAt,
+          thresholds: view.thresholds,
+          events: view.events,
+          counts: { events: view.counts.events, advisories: view.counts.advisories, resolutions: view.counts.resolutions }
+        });
         return;
       }
 

@@ -5,6 +5,8 @@
  */
 
 const assert = require('assert');
+const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
@@ -92,7 +94,35 @@ function runTests() {
       result.stderr.includes('target=/tmp/test.md'),
       `Expected stderr to contain target file path, got: ${result.stderr}`
     );
-    assert.strictEqual(result.stdout, input, 'Expected stdin to be passed through unchanged');
+    assert.strictEqual(result.stdout, '', 'Dry-run hooks must not echo stdin');
+  })) passed++; else failed++;
+
+  if (test('flushes a large dry-run preview when oversized stdout is suppressed', () => {
+    const runWithFlags = path.resolve(__dirname, '..', '..', 'scripts', 'hooks', 'run-with-flags.js');
+    const hookScript = 'scripts/hooks/block-no-verify.js';
+    const command = 'x'.repeat(900 * 1024);
+    const document = JSON.stringify({ tool: 'Bash', tool_input: { command } });
+    const input = document.padEnd(1024 * 1024 + 1024, ' ');
+
+    const result = spawnSync(process.execPath, [
+      runWithFlags,
+      'pre:bash:block-no-verify',
+      hookScript,
+      'standard,strict',
+    ], {
+      input,
+      encoding: 'utf8',
+      env: { ...process.env, ECC_DRY_RUN: '1' },
+      cwd: path.resolve(__dirname, '..', '..'),
+      maxBuffer: 4 * 1024 * 1024,
+    });
+
+    assert.strictEqual(result.status, 0, `Expected exit 0, got ${result.status}`);
+    assert.strictEqual(result.stdout, '', 'Oversized dry-run input must keep stdout suppressed');
+    assert.ok(
+      result.stderr.endsWith(`command=${command}\n`),
+      `Expected the complete dry-run preview on stderr, got ${result.stderr.length} characters`
+    );
   })) passed++; else failed++;
 
   if (test('dry-run preview includes command for bash hooks', () => {
@@ -121,7 +151,7 @@ function runTests() {
       result.stderr.includes('command=git commit --no-verify'),
       `Expected stderr to contain command, got: ${result.stderr}`
     );
-    assert.strictEqual(result.stdout, input, 'Expected stdin to be passed through unchanged');
+    assert.strictEqual(result.stdout, '', 'Dry-run hooks must not echo stdin');
   })) passed++; else failed++;
 
   if (test('dry-run preview handles non-JSON stdin gracefully', () => {
@@ -150,7 +180,7 @@ function runTests() {
       !result.stderr.includes('tool='),
       'Expected no tool= when stdin is not JSON'
     );
-    assert.strictEqual(result.stdout, input, 'Expected stdin to be passed through unchanged');
+    assert.strictEqual(result.stdout, '', 'Dry-run hooks must not echo stdin');
   })) passed++; else failed++;
 
   if (test('dry-run preview handles empty stdin gracefully', () => {
@@ -233,17 +263,30 @@ function runTests() {
 
   if (test('--dry-run works with implicit install routing', () => {
     const eccJs = path.resolve(__dirname, '..', '..', 'scripts', 'ecc.js');
-    const result = spawnSync(process.execPath, [eccJs, '--dry-run', '--json', 'typescript'], {
-      encoding: 'utf8',
-      env: { ...process.env },
-    });
-    assert.strictEqual(result.status, 0, `Expected exit 0, got ${result.status}: ${result.stderr}`);
-    const payload = JSON.parse(result.stdout);
-    assert.strictEqual(payload.dryRun, true, 'Expected dryRun=true in JSON output');
-    assert.deepStrictEqual(payload.plan.legacyLanguages, ['typescript']);
+    const homeDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ecc-dry-run-home-'));
+    try {
+      const result = spawnSync(process.execPath, [eccJs, '--dry-run', '--json', 'typescript'], {
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          CLAUDE_CONFIG_DIR: path.join(homeDir, '.claude'),
+          HOME: homeDir,
+          USERPROFILE: homeDir,
+        },
+        maxBuffer: 10 * 1024 * 1024,
+      });
+      assert.strictEqual(result.status, 0, `Expected exit 0, got ${result.status}: ${result.stderr}`);
+      const payload = JSON.parse(result.stdout);
+      assert.strictEqual(payload.dryRun, true, 'Expected dryRun=true in JSON output');
+      assert.deepStrictEqual(payload.plan.legacyLanguages, ['typescript']);
+    } finally {
+      fs.rmSync(homeDir, { force: true, recursive: true });
+    }
   })) passed++; else failed++;
 
   console.log(`\nResults: ${passed} passed, ${failed} failed`);
+  console.log(`Passed: ${passed}`);
+  console.log(`Failed: ${failed}`);
   process.exit(failed > 0 ? 1 : 0);
 }
 

@@ -37,7 +37,7 @@ PYTHON_CMD="${CLV2_PYTHON_CMD:-}"
 
 # shellcheck disable=SC1091
 . "${SKILL_ROOT}/scripts/lib/homunculus-dir.sh"
-CONFIG_DIR="$(_ecc_resolve_homunculus_dir)"
+CONFIG_DIR="$(_clv2_resolve_homunculus_dir)"
 if [ -n "${CLV2_CONFIG:-}" ]; then
   CONFIG_FILE="$CLV2_CONFIG"
 elif [ -f "${CONFIG_DIR}/config.json" ]; then
@@ -156,8 +156,14 @@ case "$ACTION" in
         echo "Observer is running (PID: $pid)"
         echo "Log: $LOG_FILE"
         echo "Observations: $(wc -l < "$OBSERVATIONS_FILE" 2>/dev/null || echo 0) lines"
-        # Also show instinct count
-        instinct_count=$(find "$INSTINCTS_DIR" -name "*.yaml" 2>/dev/null | wc -l)
+        # Count eligible files, not parsed records: the loader accepts these
+        # suffixes case-insensitively and follows links to regular files.
+        # Stay at the top level, excluding dot-only names with no Path.suffix.
+        # Count NUL records so newlines in filenames cannot inflate the result.
+        instinct_find_expr=( \( -iname "*.yaml" -o -iname "*.yml" -o -iname "*.md" \) )
+        instinct_count=$(find -L "$INSTINCTS_DIR" -mindepth 1 -maxdepth 1 -type f \
+          "${instinct_find_expr[@]}" ! -iname ".yaml" ! -iname ".yml" ! -iname ".md" \
+          -print0 2>/dev/null | tr -cd '\000' | wc -c | tr -d '[:space:]')
         echo "Instincts: $instinct_count"
         exit 0
       else
